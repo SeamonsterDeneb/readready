@@ -6630,6 +6630,18 @@ def _on_caption_edit(edits: dict, key: str, new_value: str) -> dict:
     return _merge_editor_entries(edits, {key: value})
 
 
+def _on_decorative_toggle(edits: dict, key: str, is_decorative: bool, prior_alt: str) -> tuple:
+    """Toggle an image's decorative state, clearing alt text and locking inputs when checked."""
+    val = "" if is_decorative else (prior_alt or "")
+    new_edits = _merge_editor_entries(edits, {key: val})
+    return (
+        new_edits,
+        gr.update(value="" if is_decorative else prior_alt, interactive=not is_decorative),
+        gr.update(interactive=not is_decorative),
+    )
+
+
+
 def _on_sr_edits_batch(edits: dict, doc_idx: int, payload_json: str) -> dict:
     """Merge a JSON batch of inline Screen-Reader edits into caption_edits_state.
 
@@ -7191,7 +7203,7 @@ with gr.Blocks(
                                         table_captions = doc.get("table_captions", {})
                                         editable_images = [
                                             r for r in image_records
-                                            if r.get("outcome") in ("generated", "harvested", "needs_manual_alt_text")
+                                            if r.get("outcome") in ("generated", "harvested", "needs_manual_alt_text", "decorative")
                                         ]
                                         caption_entries = table_captions.get("captions", {})
                                         # Build formula entries from VLM descriptions
@@ -7272,6 +7284,7 @@ with gr.Blocks(
                                                     page = rec.get("page_number")
                                                     file_path = rec.get("file_path")
                                                     page_label = f"Page {page}" if page else ""
+                                                    is_dec = rec.get("outcome") == "decorative"
                                                     tb_target_id = f"polly-target-{rid}-{i}-{img_idx}"
                                                     with gr.Row(key=k("img-row", i, img_idx)):
                                                         with gr.Column(scale=1, min_width=140, key=k("img-thumb-col", i, img_idx)):
@@ -7292,10 +7305,16 @@ with gr.Blocks(
                                                             if thumb_html:
                                                                 gr.HTML(value=thumb_html, key=k("img-thumb", i, img_idx))
                                                         with gr.Column(scale=3, key=k("img-text-col", i, img_idx)):
+                                                            dec_cb = gr.Checkbox(
+                                                                value=is_dec,
+                                                                label="Mark as decorative (ignore / artifact)",
+                                                                key=k("img-dec", i, img_idx),
+                                                                elem_classes=["decorative-checkbox"],
+                                                            )
                                                             tb = gr.Textbox(
-                                                                value=alt_text,
+                                                                value="" if is_dec else alt_text,
                                                                 label=f"Image {img_idx + 1} alt text",
-                                                                lines=3, max_lines=8, interactive=True,
+                                                                lines=3, max_lines=8, interactive=not is_dec,
                                                                 key=k("img-alt", i, img_idx),
                                                                 elem_id=tb_target_id,
                                                                 elem_classes=["alt-text-editor"],
@@ -7308,8 +7327,14 @@ with gr.Blocks(
                                                             polly_btn = gr.Button(
                                                                 "🦜 Review & Refine with Polly",
                                                                 size="sm",
+                                                                interactive=not is_dec,
                                                                 key=k("polly-btn", i, img_idx),
                                                                 elem_classes=["polly-gen-btn"],
+                                                            )
+                                                            dec_cb.change(
+                                                                fn=_on_decorative_toggle,
+                                                                inputs=[caption_edits_state, gr.State(f"img:{i}:{img_idx}:{src}"), dec_cb, tb],
+                                                                outputs=[caption_edits_state, tb, polly_btn],
                                                             )
                                                             _img_url_js = json.dumps(_file_url(file_path))
                                                             _tb_id_js = json.dumps(tb_target_id)

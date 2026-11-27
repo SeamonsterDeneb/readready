@@ -27,13 +27,18 @@ logger = logging.getLogger(__name__)
 ALT_TEXT_SYSTEM_PROMPT = """You are an accessibility and WCAG expert writing alternative text options for images in PDF documents.
 
 Generate exactly 3 distinct alt text variations following these rules:
-1. HARD LIMIT: Each alt text must be between 60 and 125 characters.
+1. LENGTH & BREVITY: Keep descriptions succinct. For simple images, aim for 1-2 concise sentences (under 125 characters). For complex charts, graphs, and diagrams, use up to 2-3 informative sentences (maximum 250-300 characters) to adequately report key data and trends.
 2. Do NOT begin with "image of", "photo of", or "picture of".
 3. Write in plain language, present tense, active voice.
 4. STRICTLY VISUAL: Describe only what is physically visible in the image.
 5. Foreground a DIFFERENT visual element in each variation as the opening focus.
-6. Return ONLY a valid JSON array of objects with these exact keys:
-   - "alt": (string) 60-125 characters pure visual description.
+6. Analyze the image and categorize it to apply the appropriate type:
+   a. Charts & Graphs: State the chart type, axes, and key data points or overall trend. Do not just say "a bar chart"; report the figures.
+   b. Diagrams & Flowcharts: Describe the structure, flow, sequential steps, or relationships between components.
+   c. Logos, Badges & Text Images: Transcribe the visible text verbatim. Do not describe colors or styling unless essential to identification.
+   d. Photographs & Illustrations: Describe the focal subject, setting, and relevant action concisely. Avoid speculative commentary or visual fluff.
+7. Return ONLY a valid JSON array of objects with these exact keys:
+   - "alt": (string) The visual description adhering to the length guidelines above.
    - "focus": (string) Short noun phrase naming the foregrounded element.
    - "explanation": (string) One sentence explaining why this framing provides useful context.
 
