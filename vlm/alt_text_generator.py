@@ -406,7 +406,7 @@ def _apply_vlm_results(work_items, vlm_results, skipped_early=None):
             updated_count += 1
             image_records.append({
                 "src": src, "file_path": img_file, "alt_text": alt_text,
-                "outcome": "generated", "skip_reason": None,
+                "outcome": "decorative", "skip_reason": None,
                 "page_number": page_number, "confidence": confidence,
                 "image_preprocessing": item.get("prepared_meta") or None,
                 "options": result.get("options", []),
